@@ -84,3 +84,31 @@ teleop:
         target: data
         scale: 2
         offset: 1
+  
+  parameter_kp_position:
+    type: topic
+    message_type: std_msgs/Float32
+    topic_name: parameter_kp_position
+    deadman_buttons: [ 4 ]
+    axis_mappings:
+      - axis: 2
+        target: data
+        scale: -30
+        offset: 30
+        
+
+  # parameter_kp_position:
+  #   type: topic
+  #   message_type: geometry_msgs/Twist
+  #   topic_name: cmd_vel
+  #   deadman_buttons: [ 4 ]
+  #   axis_mappings:
+  #     - axis: 3
+  #       target: angular.z
+  #       scale: 1.5
+  #     - axis: 1
+  #       target: linear.x
+  #       scale: 0.3
+  #     - axis: 0
+  #       target: linear.y
+  #       scale: 0.3

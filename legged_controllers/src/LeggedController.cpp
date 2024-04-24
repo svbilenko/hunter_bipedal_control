@@ -53,8 +53,11 @@ bool LeggedController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHand
   setupLeggedInterface(taskFile, urdfFile, referenceFile, verbose);
   setupMpc();
   setupMrt();
+  scalar_t durationSecs = 2.0;
+  standDuration_ = durationSecs * 500;
   // Visualization
   ros::NodeHandle nh;
+  controller_nh.getParam("/use_real_kp_position", use_real_kp_position);
   CentroidalModelPinocchioMapping pinocchioMapping(leggedInterface_->getCentroidalModelInfo());
   eeKinematicsPtr_ = std::make_shared<PinocchioEndEffectorKinematics>(
       leggedInterface_->getPinocchioInterface(), pinocchioMapping, leggedInterface_->modelSettings().contactNames3DoF);
@@ -136,6 +139,8 @@ void LeggedController::starting(const ros::Time& time)
 
 void LeggedController::update(const ros::Time& time, const ros::Duration& period)
 {
+
+  // std::cout << "kp_position" << kp_position << std::endl;
   const ros::Time shifted_time = time - startingTime_;
   // State Estimate
   updateStateEstimation(shifted_time, period);
@@ -196,6 +201,13 @@ void LeggedController::update(const ros::Time& time, const ros::Duration& period
   for (size_t j = 0; j < jointDim_; ++j)
   {
     //"Limit protection
+    if (isFirstIteration)
+    {
+      start_joint_pos = currentObservation_.state.segment<10>(12);
+      pos_stance_ref = start_joint_pos;
+      isFirstIteration = false;
+    }
+
     const auto& model = leggedInterface_->getPinocchioInterface().getModel();
     double lower_bound = model.lowerPositionLimit(6 + j);
     double upper_bound = model.upperPositionLimit(6 + j);
@@ -209,16 +221,26 @@ void LeggedController::update(const ros::Time& time, const ros::Duration& period
     }
     if (!loadControllerFlag_)
     {
+      const vector_t &current_joint_pos = currentObservation_.state.segment<10>(12);
+      if (std::abs(pos_stance_ref[j] - current_joint_pos[j]) < 0.05)
+      {
+        pos_stance_ref[j] = start_joint_pos[j] * (1 - standPercent_[j]) + defalutJointPos_[j] * standPercent_[j];
+        standPercent_[j] += 1 / standDuration_;
+        standPercent_[j] = std::min(standPercent_[j], scalar_t(1));
+      }
+
       if (j == 4 || j == 9)
       {
-        hybridJointHandles_[j].setCommand(mpc_planned_joint_pos[j], mpc_planned_joint_vel[j], kp_position, kd_feet, 0);
+        hybridJointHandles_[j].setCommand(pos_stance_ref[j], 0, 60, kd_feet, 0);
       }
       else
       {
-        hybridJointHandles_[j].setCommand(mpc_planned_joint_pos[j], mpc_planned_joint_vel[j], kp_position, kd_position,
+        hybridJointHandles_[j].setCommand(pos_stance_ref[j], 0, 60, 3,
                                           0);
       }
     }
+
+
     else
     {
       contact_flag_t cmdContactFlag = modeNumber2StanceLeg(
@@ -471,6 +493,11 @@ void LeggedController::ModeSubscribe()
                                                                       &LeggedController::loadControllerCallback, this);
   subEmgstop_ = ros::NodeHandle().subscribe<std_msgs::Float32>("/emergency_stop", 1,
                                                                &LeggedController::EmergencyStopCallback, this);
+    if (use_real_kp_position) {
+        subParameterKpPositionReal_ = ros::NodeHandle().subscribe<std_msgs::Float32>("/parameter_kp_position_real", 1, &LeggedController::parameterKpPositionCallbackReal, this);
+    } else {
+        subParameterKpPositionGazebo_ = ros::NodeHandle().subscribe<std_msgs::Float32>("/parameter_kp_position_gazebo", 1, &LeggedController::parameterKpPositionCallbackGazebo, this);
+    }
 }
 
 void LeggedController::EmergencyStopCallback(const std_msgs::Float32::ConstPtr& msg)
@@ -490,6 +517,22 @@ void LeggedController::loadControllerCallback(const std_msgs::Float32::ConstPtr&
   loadControllerFlag_ = true;
   mpcRunning_ = true;
   ROS_INFO("Successfully load the controller");
+}
+
+void LeggedController::parameterKpPositionCallbackReal(const std_msgs::Float32::ConstPtr& msg)
+{
+    // Update kp_position with the maximum value between the received message and the current kp_position
+    if (msg->data > kp_position) {
+        kp_position = msg->data;
+    }
+}
+
+void LeggedController::parameterKpPositionCallbackGazebo(const std_msgs::Float32::ConstPtr& msg)
+{
+    // Update kp_position with the maximum value between the received message and the current kp_position
+    if (msg->data > kp_position) {
+        kp_position = msg->data;
+    }
 }
 
 }  // namespace legged

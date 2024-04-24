@@ -63,6 +63,8 @@ protected:
   virtual void setupStateEstimate(const std::string& taskFile, bool verbose);
 
   void dynamicParamCallback(legged_controllers::TutorialsConfig& config, uint32_t level);
+  void parameterKpPositionCallbackReal(const std_msgs::Float32::ConstPtr& msg);
+  void parameterKpPositionCallbackGazebo(const std_msgs::Float32::ConstPtr& msg);
 
   void setWalkCallback(const std_msgs::Float32::ConstPtr& msg);
   void loadControllerCallback(const std_msgs::Float32::ConstPtr& msg);
@@ -71,7 +73,7 @@ protected:
   void resetMPC();
   void RetrievingParameters();
   void ModeSubscribe();
-
+  
   // Interface
   std::shared_ptr<LeggedInterface> leggedInterface_;
   std::shared_ptr<PinocchioEndEffectorKinematics> eeKinematicsPtr_;
@@ -102,6 +104,8 @@ protected:
   ros::Subscriber subSetWalk_;
   ros::Subscriber subLoadcontroller_;
   ros::Subscriber subEmgstop_;
+  ros::Subscriber subParameterKpPositionReal_;
+  ros::Subscriber subParameterKpPositionGazebo_;
 
   ros::Duration startingTime_;
 
@@ -123,7 +127,9 @@ private:
   vector_t velDes_ = vector_t::Zero(10);
   vector_t posDesOutput_ = vector_t::Zero(10);
   vector_t velDesOutput_ = vector_t::Zero(10);
-
+  vector_t pos_stance_ref = vector_t::Zero(10);
+  vector_t standPercent_ = vector_t::Zero(10);
+  
   size_t stateDim_{ 0 };
   size_t inputDim_{ 0 };
   size_t jointDim_{ 0 };
@@ -145,7 +151,13 @@ private:
 
   vector_t defalutJointPos_;
 
+  bool use_real_kp_position; 
+  bool isFirstIteration = true;
+  
+
   InverseKinematics inverseKinematics_;
+  scalar_t standDuration_;
+  vector_t start_joint_pos;
 };
 
 }  // namespace legged

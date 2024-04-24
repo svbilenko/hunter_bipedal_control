@@ -1,19 +1,27 @@
 <?xml version="1.0" ?>
 
 <launch>
-    <arg name="robot_type" default="hunter" doc="Robot type: [hunter]"/>
+    <arg name="robot_type" default="pdd" doc="Robot type: [pdd]"/>
     <arg name="rviz" default="true"/>
     <arg name="record_data" default="false"/>
+    <arg name="use_real_kp_position" default="true" doc="Use real position KP parameter: [true/false]"/>
 
     <include file="$(find legged_bridge_hw)/launch/legged_bridge_hw.launch"/>
 
-    <node pkg="legged_controllers" type="timedelay_launch.sh" name="timedelay_launch" args="2 legged_controllers one_start.launch" output="screen"/>
-
+    <node pkg="legged_controllers" type="timedelay_launch.sh" name="timedelay_launch" args="8 legged_controllers one_start.launch" output="screen">
+        <param name="use_real_kp_position" value="$(arg use_real_kp_position)"/>
+    </node>
+    
     <node if="$(arg rviz)" name="rviz" pkg="rviz" type="rviz" args="-d $(find legged_controllers)/rviz/legged_robot.rviz" required="true" />
 
     <group if="$(arg record_data)">
         <include file="$(find legged_controllers)/launch/record_data.launch"/>
     </group>
+
+    <!-- <node name="rqt_multiplot" pkg="rqt_multiplot" type="rqt_multiplot" output="screen" args="multiplot-run-all ">
+    <param name="use_topic" value="true"/>
+    <param name="clear" value="true"/>
+    </node> -->
 
     <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" output="screen"></node>
 
