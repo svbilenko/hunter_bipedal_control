@@ -67,7 +67,6 @@ protected:
   void setWalkCallback(const std_msgs::Float32::ConstPtr& msg);
   void loadControllerCallback(const std_msgs::Float32::ConstPtr& msg);
   void EmergencyStopCallback(const std_msgs::Float32::ConstPtr& msg);
-  void ResetTargetCallback(const std_msgs::Float32::ConstPtr& msg);
 
   void resetMPC();
   void RetrievingParameters();
@@ -103,7 +102,6 @@ protected:
   ros::Subscriber subSetWalk_;
   ros::Subscriber subLoadcontroller_;
   ros::Subscriber subEmgstop_;
-  ros::Subscriber subResetTarget_;
 
   ros::Duration startingTime_;
 

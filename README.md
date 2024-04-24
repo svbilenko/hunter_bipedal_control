@@ -1,257 +1,222 @@
-## hunter_bipedal_control
+# hunter_bipedal_control
 
-An open source bipedal robot control framework, based on non-linear MPC and WBC, tailered for EC-hunter80-v01 bipedal robot. For more information refer to the project's [Page](https://bridgedp.github.io/hunter_bipedal_control). 
+## Introduction
 
-[More detailed hardware information about hunter and bipedal robot communication group](https://f0exxg5fp6u.feishu.cn/docx/D1aQdM337ovKYnxRyJMcGibunoh) 
+legged_control is an NMPC-WBC legged robot control stack and framework based
+on [OCS2](https://github.com/leggedrobotics/ocs2) and [ros-control](http://wiki.ros.org/ros_control).
+
+The advantage shows below:
+
+1. To the author's best knowledge, this framework is probably the best-performing open-source legged robot MPC control
+   framework;
+2. You can deploy this framework in your A1 robot within a few hours;
+3. Thanks to the ros-control interface, you can easily use this framework for your custom robot.
+
+I believe this framework can provide a high-performance and easy-to-use model-based baseline for the legged robot
+community.
+
+## Video presentation
+
+https://github.com/AlicXiao/githubTest/assets/126571182/f4abd20b-dacb-41f0-9375-1d9adac73bcd
 
 ## Installation
 
-### Install dependencies
+### Source code
 
-- [OCS2](https://leggedrobotics.github.io/ocs2/installation.html#prerequisites)
+The source code is hosted on GitHub: [qiayuanliao/legged_control](https://github.com/qiayuanliao/legged_control).
 
-- [ROS1-Noetic](http://wiki.ros.org/noetic)
+```
+# Clone legged_control
+git clone git@github.com:qiayuanliao/legged_control.git
+```
 
-- [LCM](https://github.com/lcm-proj/lcm) (Only required when using mujoco simulation)
+### OCS2
 
-### Clone and Build
+OCS2 is a huge monorepo; **DO NOT** try to compile the whole repo. You only need to compile `ocs2_legged_robot_ros` and
+its dependencies following the step below.
 
-```shell
-# Clone
-mkdir -p <catkin_ws_name>/src
-cd <catkin_ws_name>/src
-git clone https://github.com/bridgedp/hunter_bipedal_control.git
+1. You are supposed to clone the OCS2, pinocchio, and hpp-fcl as described in the documentation of OCS2.
+   ```
+   # Clone OCS2
+   git clone git@github.com:leggedrobotics/ocs2.git
+   # Clone pinocchio
+   git clone --recurse-submodules https://github.com/leggedrobotics/pinocchio.git
+   # Clone hpp-fcl
+   git clone --recurse-submodules https://github.com/leggedrobotics/hpp-fcl.git
+   # Clone ocs2_robotic_assets
+   git clone https://github.com/leggedrobotics/ocs2_robotic_assets.git
+   # Install dependencies
+   sudo apt install liburdfdom-dev liboctomap-dev libassimp-dev
+   ```
+2. Compile the `ocs2_legged_robot_ros` package with [catkin tools](https://catkin-tools.readthedocs.io/en/latest/)
+   instead of `catkin_make`. It will take you about ten minutes.
+   ```
+   catkin config -DCMAKE_BUILD_TYPE=RelWithDebInfo
+   catkin build ocs2_legged_robot_ros ocs2_self_collision_visualization
+   ```
 
-# Build
-cd <catkin_ws_name>
-catkin init
-catkin config -DCMAKE_BUILD_TYPE=RelWithDebInfo
+  https://github.com/AlicXiao/githubTest/assets/126571182/a496992e-db04-4a87-9bc9-196c2b790fb1
 
-# for different use build 
-# 1. gazebo simulation 
-catkin build legged_controllers legged_hunter_description legged_gazebo
+### Build
 
-# 2. mujoco simulation
-catkin build legged_controllers legged_hunter_description legged_mujoco lcm_msg mujoco
+Build the source code of `legged_control` by:
+
+```
+catkin build legged_controllers legged_hunter_description
+```
+
+Build the simulation (**DO NOT** run on the onboard computer)
+
+```
+catkin build legged_gazebo
+```
+
+Build the hardware interface real robot. If you use your computer only for simulation, you **DO NOT** need to
+compile `legged_bridge_hw` (TODO: add a legged prefix to the package name)
+
+```
+catkin build legged_bridge_hw
 ```
 
 ## Quick Start
-- Gazebo Simulation 
-[![](./docs/demovideo.png)](https://www.bilibili.com/video/BV1yF4m157F6/?share_source=copy_web&vd_source=40bb9ce8f091be0c579acdb44d366a2d)
 
-- Mujoco Simulation
-![](./docs/mujoco_demo.png)
-
-### Simulation
-
-1. Run the gazebo simulation and load the controller:
-
-```shell
-roslaunch legged_controllers one_start_gazebo.launch
-```
-
-2. Run the mujoco simulation and load the controller:
-```shell
-roslaunch legged_controllers one_start_mujoco.launch
-```
-
-### Robot hardware
-
-1. load the controller
-
-```shell
-roslaunch legged_controllers one_start_real.launch
-```
-
-***Notes:***  
-    After the user starts the simulation, the robot falls down in Gazebo OR Mujoco. 
-1. Gazebo
-    First the user needs to set ***kp_position=100***, ***kd_position=3*** in rqt (need refresh) and reset the simulation by pressing ***Ctrl+Shift+R*** to make the robot stand up.
-2. Mujoco
-    First the user needs to set ***kp_position=100***, ***kd_position=3*** in rqt (need refresh) and reset the simulation by clicking ***Reload*** to make the robot stand up.
-
-    Then, send the following commands:
-    ```bash
-    rostopic pub --once /reset_estimation std_msgs/Float32 "data: 1.23"
-    ```
-    This command will reset the state estimation information because ***Reload*** brings mutation effects to the state estimation.
-
-## Gamepad Control
-
-1. Start controller
+Run the simulation:
 
 ```
-L1 + start
+roslaunch legged_controller one_start_gazebo.launch
 ```
 
-2. Switch to walking mode
+ Or on the robot hardware:
 
 ```
-Y
+roslaunch legged_controller one_start_real.launch
 ```
 
-3. Use the joystick to control robot movement
+### Note
 
-The following is a schematic diagram of the handle operation:
+- **THE GAIT AND THE GOAL ARE COMPLETELY DIFFERENT AND SEPARATED!**  You don't need to type stance while the robot is
+  lying on the ground **with four foot touching the ground**; it's completely wrong since the robot is already in the
+  stance gait.
+- The target_trajectories_publisher is for demonstration. You can combine the trajectory publisher and gait command into
+  a very simple node to add gamepad and keyboard input for different gaits and torso heights and to start/stop
+  controller (by ros service).
 
-![](./docs/f710-gallery-1.png)
+## Framework
 
-## Simulation Without Gamepad
+The system framework diagram is shown below.
 
-Compilation: Only compile the following packages (and their dependencies), there's no need to compile the entire OCS2.
+![](docs/system_diagram.png)
 
-1. Gazebo Simulation
-```bash
-catkin build legged_controllers legged_hunter_description legged_gazebo
-```
+- The robot torso's desired velocity or position goal is converted to state trajectory and then sent to the NMPC;
+- The NMPC will evaluate an optimized system state and input.
+- The Whole-body Controller (WBC) figures out the joint torques according to the optimized states and inputs from the
+  NMPC.
+- The torque is set as a feed-forward term and is sent to the robot's motor controller.
+  Low-gain joint-space position and velocity PD commands are sent to the robot's motors to reduce the shock during foot
+  contact and for better tracking performance.
+- The NMPC and WBC need to know the current robot state, the base orientation, and the joint state, all obtained
+  directly from the IMU and the motors. Running in the same loop with WBC, a linear Kalman filter[1] estimates the base
+  position and velocity from base orientation, base acceleration, and joint foot position measurements.
 
-Execution: If you don't have a gamepad, you need to send the startup commands in order.
+## Module
 
-First, set ***kp_position=100*** in rqt and reset the simulation by pressing ***Ctrl+Shift+R*** to make the robot stand up. Then, send the following commands:
+The main module of the entire control framework is NMPC and WBC, and the following is only a very brief introduction.
 
-```bash
-rostopic pub --once /load_controller std_msgs/Float32 "data: 1.23"
-rostopic pub --once /set_walk std_msgs/Float32 "data: 1.23"
-```
+### NMPC
 
-***Before /load_controller, there needs to be a node continuously sending /cmd_vel (10Hz is normal), and it should continue sending during the simulation. Once /cmd_vel stops, the robot may fall.***
+The NMPC part solves the following optimization problems at each cycle through the formulation and solving interfaces
+provided by OCS2:
 
-As a example, here's a Python script that continuously sends /cmd_vel and allows keyboard control. You should start the script before  /load_controller. 
+$$
+\begin{split}
+\begin{cases}
+\underset{\mathbf u(.)}{\min} \ \ \phi(\mathbf x(t_I)) + \displaystyle \int_{t_0}^{t_I} l(\mathbf x(t), \mathbf u(t),
+t) \, dt \\
+\text{s.t.} \ \ \mathbf x(t_0) = \mathbf x_0 \,\hspace{11.5em} \text{initial state} \\
+\ \ \ \ \ \dot{\mathbf x}(t) = \mathbf f(\mathbf x(t), \mathbf u(t), t) \hspace{7.5em} \text{system flow map} \\
+\ \ \ \ \ \mathbf g_1(\mathbf x(t), \mathbf u(t), t) = \mathbf{0} \hspace{8.5em} \text{state-input equality
+constraints} \\
+\ \ \ \ \ \mathbf g_2(\mathbf x(t), t) = \mathbf{0} \hspace{10.5em} \text{state-only equality constraints} \\
+\ \ \ \ \ \mathbf h(\mathbf x(t), \mathbf u(t), t) \geq \mathbf{0} \hspace{8.5em} \text{inequality constraints}
+\end{cases}\end{split}
+$$
 
-```python
-#!/usr/bin/env python
+For this framework, we defined system state $\mathbf{x}$ and input $\mathbf{u}$ as:
 
-import rospy
-from geometry_msgs.msg import Twist
-from pynput import keyboard
-import threading
+$$
+\begin{equation} \mathbf{x}= [\mathbf{h}_{com}^T, \mathbf{q}_b^T, \mathbf{q}_j^T]^T,
+\mathbf{u} = [\mathbf{f}_c^T, \mathbf{v}_j^T]^T \end{equation}
+$$
 
-class KeyboardController:
-    def __init__(self):
-        self.publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
-        self.twist_msg = Twist()
-        self.rate = rospy.Rate(10)
+where $\mathbf{h}_{com} \in \mathbb{R}^6$ is the collection of the normalized centroidal momentum,
+$\mathbf{q}=[\mathbf{q}_b^T, \mathbf{q}_j^T]^T$ is the generalized coordinate. $\mathbf{f}_c \in \mathbb{R}^{12}$
+consists of contact forces at four contact points, i.e., four ground reaction forces of the foot. $\mathbf{q}_j$ and
+$\mathbf{v}_j$ are the joint positions and velocities.
+While the cost function is simply the quadratic cost of tracking the error of all states and the input, the system
+dynamics uses centroidal dynamics with the following constraints:
 
-    def on_press(self, key):
-        try:
-            if key.char == 'q':
-                rospy.signal_shutdown("Quit")
-            else:
-                if key.char == 'w':
-                    self.twist_msg.linear.x = 0.35
-                elif key.char == 's':
-                    self.twist_msg.linear.x = -0.35
-                else:
-                    self.twist_msg.linear.x = 0.0
+- Friction cone;
+- No motion at the standing foot;
+- The z-axis position of the swinging foot satisfies the gait-generated curve.
 
-                if key.char == 'a':
-                    self.twist_msg.angular.z = 0.35
-                elif key.char == 'd':
-                    self.twist_msg.angular.z = -0.35
-                else:
-                    self.twist_msg.angular.z = 0.0
-        except AttributeError:
-            pass
+To solve this optimal control problem, a multiple shooting is formulated to transcribe the optimal control problem to a
+nonlinear program (NLP) problem, and the NLP problem is solved using Sequential Quadratic Programming (SQP). The QP
+subproblem is solved using HPIPM. For more details [2, 3]
 
-    def on_release(self, key):
-        self.twist_msg.linear.x = 0.0
-        self.twist_msg.angular.z = 0.0
+### WBC
 
-def ros_publish():
-    while not rospy.is_shutdown():
-        controller.publisher.publish(controller.twist_msg)
-        controller.rate.sleep()
+![](docs/tasks.png)
 
+WBC only considers the current moment. Several tasks are defined in the table above. Each task is the equality
+constraints or inequality constraints on decision variables. The decision variables of WBC are:
 
-if __name__ == '__main__':
-    rospy.init_node("keyboard_control")
-    controller = KeyboardController()
+$$
+\mathbf{x}_{wbc} = [\ddot{\mathbf{q}}^T, \mathbf{f}_c^T, \mathbf{\tau}^T]^T
+$$
 
-    thread = threading.Thread(target=ros_publish)
-    thread.start()
+where $\ddot{\mathbf{q}}$ is acceleration of generalized coordinate, $\mathbf{\tau}$ is the joint torque. The WBC solves
+the QP problem in the null space of the higher priority tasks' linear constraints and tries to minimize the slacking
+variables of inequality constraints. This approach can consider the full nonlinear rigid body dynamics and ensure strict
+hierarchy results. For more details [4].
 
-    listener = keyboard.Listener(on_press=controller.on_press, on_release=controller.on_release)
-    listener.start()
-    while not rospy.is_shutdown():
-        pass
+## Deploy and Develop
 
-    listener.stop()
-    listener.join()
-    
-    thread.join()
-```
-2. Mujoco Simulation
-```bash
-catkin build legged_controllers legged_hunter_description legged_mujoco lcm_msg mujoco
-```
-Execution: If you don't have a gamepad, you need to send the startup commands in order.
+### A1 robot
 
-First, set ***kp_position=100*** ***kd_position=3***  in rqt and reset the simulation by clicking ***Reload*** to make the robot stand up. Then, send the following commands:
+People with ROS foundation should be able to run through simulation and real machine deployment within a few hours. The
+following shows some known laboratories that have run through this framework on their own A1 objects. and the time spent
+The table below shows the labs successfully deploying this repo in their **real A1**; feel free to open a PR to update
+it. (because the code they got at the time was not stable, so the spend time cannot represent the their level).
 
-```bash
-rostopic pub --once /reset_estimation std_msgs/Float32 "data: 1.23"
-rostopic pub --once /load_controller std_msgs/Float32 "data: 1.23"
-rostopic pub --once /set_walk std_msgs/Float32 "data: 1.23"
-```
-and 
-```bash
-rosrun rqt_robot_steering rqt_robot_steering 
-```
+| Lab        | XPeng Robotics | Unitree | Hybrid Robotics |
+|------------|----------------|---------|-----------------|
+| Spend Time | 1 day          | -       | 2 hours         |
 
-## Running on Hardware Headless
+I recommended to use an external computing device such as NUC to run this control framework. The author uses the 11th
+generation of NUC, and the computing frequency of NMPC can be close to 200Hz.
 
-1. Plug a monitor into the onboard mini pc. Login to a local network and double check the computer name and user name.
+### Your costum rorbots
 
-2. Power the mini PC from the onboard battery it should automatically connect to the local network.
+Deploying this framework to your robot is very simple, the steps are as follows:
 
-3. Open a terminal, power shell, or any ternimal emulator (PuTTY) from another PC on the same network.
-
-```bash
-ssh <username@hostname>
-```
-
-```bash
-cd Desktop/hunter_bipedal_control/ 
-sudo su
-source devel/setup.bash
-roslaunch legged_controllers one_start_real.launch rviz:=false
-```
-
-4. Hold L1 and **slowly** push L2 to the end to increase ***kp_position***.
-
-5. The rest of the steps are the same as controlling in simulation. 
+- Imitate the `BridgeHW` class in legged_examples/legged_bridge/legged_bridge_hw
+  , inherit `LeggedHW` and implement the `read()` and `write()` functions of the hardware interface;
+- Imitate the legged_examples/legged_hunter/legged_hunter_description, write the xarco of the robot and generate the
+  URDF file, note that the names of the joint and link need to be the same as legged_unitree_description.
 
 ## Reference
 
-### Code Reference
+[1] T. Flayols, A. Del Prete, P. Wensing, A. Mifsud, M. Benallegue, and O. Stasse, “Experimental evaluation of simple
+estimators for humanoid robots,” IEEE-RAS Int. Conf. Humanoid Robot., pp. 889–895, 2017, doi:
+10.1109/HUMANOIDS.2017.8246977.
 
-https://github.com/qiayuanl/legged_control
+[2] J. P. Sleiman, F. Farshidian, M. V. Minniti, and M. Hutter, “A Unified MPC Framework for Whole-Body Dynamic
+Locomotion and Manipulation,” IEEE Robot. Autom. Lett., vol. 6, no. 3, pp. 4688–4695, 2021, doi:
+10.1109/LRA.2021.3068908.
 
-### Paper Reference
+[3] R. Grandia, F. Jenelten, S. Yang, F. Farshidian, and M. Hutter, “Perceptive Locomotion through Nonlinear Model
+Predictive Control,” (submitted to) IEEE Trans. Robot., no. August, 2022, doi: 10.48550/arXiv.2208.08373.
 
-#### State Estimation
-
-```
-[1] Flayols T, Del Prete A, Wensing P, et al. Experimental evaluation of simple estimators for humanoid robots[C]//2017 IEEE-RAS 17th International Conference on Humanoid Robotics (Humanoids). IEEE, 2017: 889-895.
-
-[2] Bloesch M, Hutter M, Hoepflinger M A, et al. State estimation for legged robots-consistent fusion of leg kinematics and IMU[J]. Robotics, 2013, 17: 17-24.
-
-```
-
-#### MPC
-
-```
-[3] Di Carlo J, Wensing P M, Katz B, et al. Dynamic locomotion in the mit cheetah 3 through convex model-predictive control[C]//2018 IEEE/RSJ international conference on intelligent robots and systems (IROS). IEEE, 2018: 1-9.
-
-[4] Grandia R, Jenelten F, Yang S, et al. Perceptive Locomotion Through Nonlinear Model-Predictive Control[J]. IEEE Transactions on Robotics, 2023.
-
-[5] Sleiman J P, Farshidian F, Minniti M V, et al. A unified mpc framework for whole-body dynamic locomotion and manipulation[J]. IEEE Robotics and Automation Letters, 2021, 6(3): 4688-4695.
-```
-
-#### WBC
-
-```
-[6] Bellicoso C D, Gehring C, Hwangbo J, et al. Perception-less terrain adaptation through whole body control and hierarchical optimization[C]//2016 IEEE-RAS 16th International Conference on Humanoid Robots (Humanoids). IEEE, 2016: 558-564.
-
-[7] Kim D, Di Carlo J, Katz B, et al. Highly dynamic quadruped locomotion via whole-body impulse control and model predictive control[J]. arXiv preprint arXiv:1909.06586, 2019.
-```
+[4] C. Dario Bellicoso, C. Gehring, J. Hwangbo, P. Fankhauser, and M. Hutter, “Perception-less terrain adaptation
+through whole body control and hierarchical optimization,” in IEEE-RAS International Conference on Humanoid Robots,
+2016, pp. 558–564, doi: 10.1109/HUMANOIDS.2016.7803330.
