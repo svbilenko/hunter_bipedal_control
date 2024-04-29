@@ -153,7 +153,7 @@ private:
 
   bool use_real_kp_position; 
   bool isFirstIteration = true;
-  
+  double my_kp = 0.0;
 
   InverseKinematics inverseKinematics_;
   scalar_t standDuration_;

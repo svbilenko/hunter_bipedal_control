@@ -5,6 +5,7 @@
     <arg name="rviz" default="true"/>
     <arg name="record_data" default="false"/>
     <arg name="use_real_kp_position" default="true" doc="Use real position KP parameter: [true/false]"/>
+    <param name="my_kp" value="60.0" />
 
     <include file="$(find legged_bridge_hw)/launch/legged_bridge_hw.launch"/>
 

@@ -47,6 +47,7 @@ bool LeggedController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHand
   controller_nh.getParam("/urdfFile", urdfFile);
   controller_nh.getParam("/taskFile", taskFile);
   controller_nh.getParam("/referenceFile", referenceFile);
+  controller_nh.getParam("/my_kp", my_kp);
   bool verbose = false;
   loadData::loadCppDataType(taskFile, "legged_robot_interface.verbose", verbose);
 
@@ -231,11 +232,11 @@ void LeggedController::update(const ros::Time& time, const ros::Duration& period
 
       if (j == 4 || j == 9)
       {
-        hybridJointHandles_[j].setCommand(pos_stance_ref[j], 0, 60, kd_feet, 0);
+        hybridJointHandles_[j].setCommand(pos_stance_ref[j], 0, my_kp, kd_feet, 0);
       }
       else
       {
-        hybridJointHandles_[j].setCommand(pos_stance_ref[j], 0, 60, 3,
+        hybridJointHandles_[j].setCommand(pos_stance_ref[j], 0, my_kp, 3,
                                           0);
       }
     }
