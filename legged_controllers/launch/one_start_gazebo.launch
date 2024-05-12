@@ -2,7 +2,8 @@
 
 <launch>
     <arg name="robot_type" default="hunter" doc="Robot type: [hunter]"/>
-    <arg name="rviz" default="true"/>
+    <arg name="rviz" default="false"/>
+    <arg name="rqt" default="false"/>
     <arg name="record_data" default="false"/>
 
     <include file="$(find legged_hunter_description)/launch/empty_world.launch"/>
@@ -15,6 +16,6 @@
         <include file="$(find legged_controllers)/launch/record_data.launch"/>
     </group>
 
-    <node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" output="screen"></node>
+    <node if="$(arg rqt)" name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" output="screen"></node>
 
 </launch>
